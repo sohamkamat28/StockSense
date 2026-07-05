@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="StockSense is a dark, decision-tree stock movement console for visualizing technical-indicator predictions."/>
+<meta name="theme-color" content="#050506"/>
+<meta property="og:title" content="StockSense AI"/>
+<meta property="og:description" content="Decision-tree stock movement prediction with live market data and walk-forward backtesting."/>
+<title>StockSense AI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050506'/%3E%3Cpath d='M14 41h8l7-18 7 26 7-15h7' fill='none' stroke='%230a84ff' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"/>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #050506;
+  --bg-soft: #0b0c0f;
+  --surface: rgba(26, 27, 31, 0.78);
+  --surface-strong: rgba(38, 39, 45, 0.88);
+  --surface-quiet: rgba(255, 255, 255, 0.055);
+  --surface-hover: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #f5f5f7;
+  --muted: #a1a1aa;
+  --muted-2: #73737d;
+  --blue: #0a84ff;
+  --blue-soft: rgba(10, 132, 255, 0.14);
+  --green: #30d158;
+  --green-soft: rgba(48, 209, 88, 0.13);
+  --red: #ff453a;
+  --red-soft: rgba(255, 69, 58, 0.13);
+  --amber: #ffd60a;
+  --amber-soft: rgba(255, 214, 10, 0.12);
+  --violet: #bf5af2;
+  --cyan: #64d2ff;
+  --radius: 8px;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+  --shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+
+html {
+  font-size: 15px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    linear-gradient(180deg, #050506 0%, #0a0b0e 42%, #050506 100%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 12px);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.36;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.72), transparent 78%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.075;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.09) 0 1px, transparent 1px 4px);
+  mix-blend-mode: overlay;
+}
+
+button, select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #08090b; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 8px;
+  border: 3px solid #08090b;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 0.8rem;
+  z-index: 1000;
+  padding: 0.55rem 0.8rem;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  transform: translateY(-160%);
+  transition: transform 0.2s ease;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.95rem clamp(1rem, 3vw, 2.4rem);
+  border-bottom: 1px solid var(--border);
+  background: rgba(5, 5, 6, 0.72);
+  backdrop-filter: blur(26px) saturate(150%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.82rem;
+  min-width: 0;
+}
+
+.logo-icon {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)),
+    #111216;
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 18px 38px rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+
+.logo-icon::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 20px;
+  height: 2px;
+  background: var(--blue);
+  box-shadow: 8px -8px 0 var(--green), 16px 5px 0 var(--cyan);
+  transform: skewY(-28deg);
+}
+
+.logo-icon span {
+  position: absolute;
+  inset: auto 7px 6px auto;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: rgba(245,245,247,0.72);
+}
+
+.brand h1 {
+  font-size: clamp(1.12rem, 1.4vw, 1.34rem);
+  line-height: 1.05;
+  font-weight: 720;
+  text-wrap: balance;
+}
+
+.brand p {
+  margin-top: 0.22rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.header-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.34rem 0.62rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: rgba(245,245,247,0.78);
+  background: rgba(255,255,255,0.052);
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.chip-blue { color: #b7dcff; background: var(--blue-soft); border-color: rgba(10,132,255,0.26); }
+.chip-green { color: #bcf8ca; background: var(--green-soft); border-color: rgba(48,209,88,0.25); }
+
+main {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1760px);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.2rem);
+}
+
+.control-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(420px, auto);
+  gap: 1rem;
+  align-items: end;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.035)),
+    rgba(20, 21, 25, 0.82);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+.control-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 0.42rem;
+  color: var(--cyan);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-copy h2 {
+  font-size: clamp(1.75rem, 4vw, 3.9rem);
+  line-height: 0.94;
+  font-weight: 760;
+  max-width: 12ch;
+  text-wrap: balance;
+}
+
+.control-copy p {
+  margin-top: 0.72rem;
+  max-width: 58ch;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.58;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto;
+  gap: 0.65rem;
+  justify-content: end;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+select#ticker-select {
+  width: 100%;
+  min-height: 44px;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045)),
+    #14151a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 0.82rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+select#ticker-select:hover {
+  border-color: var(--border-strong);
+  background: #191a20;
+}
+
+select#ticker-select:focus {
+  border-color: rgba(10,132,255,0.68);
+  box-shadow: 0 0 0 4px rgba(10,132,255,0.14);
+}
+
+#train-btn {
+  min-height: 44px;
+  min-width: 168px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  border-radius: 8px;
+  color: #f9fbff;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.02)),
+    var(--blue);
+  box-shadow: 0 16px 34px rgba(10,132,255,0.28), inset 0 1px 0 rgba(255,255,255,0.32);
+  font-weight: 720;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+#train-btn:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 18px 42px rgba(10,132,255,0.34), inset 0 1px 0 rgba(255,255,255,0.34);
+  transform: translateY(-1px);
+}
+
+#train-btn:active { transform: translateY(0) scale(0.985); }
+#train-btn:disabled {
+  opacity: 0.58;
+  cursor: wait;
+  transform: none;
+}
+
+.spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.34);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.72s linear infinite;
+}
+
+.notice {
+  display: none;
+  grid-column: 1 / -1;
+  padding: 0.72rem 0.85rem;
+  border-radius: 8px;
+  color: #ffd1cf;
+  background: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.22);
+  line-height: 1.45;
+}
+.notice.show { display: block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#stats-bar {
+  display: none;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+#stats-bar.visible { display: grid; }
+
+.stat {
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.9rem 1rem;
+  background: rgba(18, 19, 23, 0.86);
+}
+
+.stat-label {
+  color: var(--muted-2);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  color: var(--text);
+  font-size: clamp(1rem, 1.4vw, 1.32rem);
+  font-weight: 760;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.c-green { color: var(--green); }
+.c-red { color: var(--red); }
+.c-amber { color: var(--amber); }
+.c-cyan { color: var(--cyan); }
+.c-purple { color: var(--violet); }
+.stat-divider { display: none; }
+
+#empty-state {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(300px, 1.1fr);
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: stretch;
+  padding: clamp(1rem, 3vw, 2rem) 0;
+}
+
+.empty-copy {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.03)),
+    rgba(15,16,20,0.78);
+  box-shadow: var(--shadow-soft);
+}
+
+.empty-copy h2 {
+  max-width: 11ch;
+  font-size: clamp(2.2rem, 5vw, 5rem);
+  line-height: 0.92;
+  font-weight: 780;
+  text-wrap: balance;
+}
+
+.empty-copy p {
+  margin-top: 1rem;
+  max-width: 48ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.preview-panel {
+  min-height: 420px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: rgba(18,19,23,0.8);
+  box-shadow: var(--shadow);
+}
+
+.preview-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 1px;
+  background: var(--border);
+}
+
+.preview-cell {
+  position: relative;
+  min-height: 170px;
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+    #111216;
+  overflow: hidden;
+}
+
+.preview-cell:nth-child(1) { grid-row: span 2; }
+
+.preview-label {
+  color: var(--muted-2);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.preview-number {
+  margin-top: 0.55rem;
+  font-size: clamp(2.1rem, 5vw, 4rem);
+  line-height: 0.9;
+  font-weight: 780;
+}
+
+.sparkline {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 58%;
+}
+
+.bars {
+  position: absolute;
+  inset: auto 1rem 1rem 1rem;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 0.35rem;
+  align-items: end;
+  height: 58%;
+}
+
+.bars span {
+  display: block;
+  border-radius: 4px 4px 0 0;
+  background: rgba(10,132,255,0.48);
+}
+
+#app {
+  display: none;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding-top: 1rem;
+}
+
+#app.visible { display: grid; }
+
+.card {
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.027)),
+    rgba(18, 19, 23, 0.82);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+.card-hdr {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.035);
+}
+
+.card-hdr h3 {
+  font-size: 0.82rem;
+  font-weight: 760;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: rgba(245,245,247,0.82);
+}
+
+.ticker-badge {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+#pred-card {
+  position: sticky;
+  top: 92px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#pred-card.up {
+  border-color: rgba(48,209,88,0.34);
+  box-shadow: 0 24px 70px rgba(48,209,88,0.08), var(--shadow-soft);
+}
+
+#pred-card.down {
+  border-color: rgba(255,69,58,0.34);
+  box-shadow: 0 24px 70px rgba(255,69,58,0.08), var(--shadow-soft);
+}
+
+.pred-verdict {
+  display: grid;
+  gap: 0.42rem;
+  justify-items: start;
+  padding: 1.25rem 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pred-arrow {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-quiet);
+  border: 1px solid var(--border);
+  font-size: 1.28rem;
+}
+
+.pred-dir {
+  font-size: clamp(3rem, 8vw, 5.2rem);
+  line-height: 0.86;
+  font-weight: 800;
+}
+
+.pred-dir.up { color: var(--green); }
+.pred-dir.down { color: var(--red); }
+
+.pred-sub {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.conf-bar-wrap {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.conf-bar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.55rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.conf-bar-bg {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+}
+
+.conf-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.55s cubic-bezier(.2,.8,.2,1), background 0.2s ease;
+}
+
+.indicators-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.ind-item {
+  min-height: 72px;
+  padding: 0.72rem;
+  background: rgba(15,16,20,0.86);
+}
+
+.ind-name {
+  color: var(--muted-2);
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.ind-val {
+  margin-top: 0.38rem;
+  font-size: 1.06rem;
+  font-weight: 760;
+}
+
+.path-section { padding: 0.95rem 1rem 1rem; }
+
+.path-title {
+  margin-bottom: 0.7rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.path-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.52rem;
+}
+
+.path-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 0.62rem;
+  align-items: start;
+  padding: 0.66rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.045);
+  font-size: 0.8rem;
+}
+
+.path-num {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #dff0ff;
+  background: var(--blue-soft);
+  border: 1px solid rgba(10,132,255,0.26);
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.path-content { min-width: 0; line-height: 1.52; }
+.path-feat { color: #b7dcff; font-weight: 760; }
+.path-val { color: var(--amber); font-weight: 760; }
+.path-meta { margin-top: 0.16rem; color: var(--muted); font-size: 0.72rem; }
+
+.path-leaf {
+  border-radius: 8px;
+  padding: 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.tab-card { padding: 0; }
+
+.tab-bar {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.034);
+  overflow-x: auto;
+}
+
+.tab-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.85rem;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 720;
+  white-space: nowrap;
+  user-select: none;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.tab-btn:hover { color: var(--text); background: var(--surface-quiet); }
+.tab-btn:active { transform: scale(0.985); }
+.tab-btn.active {
+  color: var(--text);
+  background: rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.tab-pane { display: none; padding: 1rem; }
+.tab-pane.active { display: block; }
+
+.info-box {
+  margin-bottom: 0.9rem;
+  padding: 0.78rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.045);
+  color: rgba(245,245,247,0.78);
+  font-size: 0.82rem;
+  line-height: 1.62;
+}
+
+#tree-svg-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), transparent),
+    #090a0d;
+}
+
+#tree-svg {
+  display: block;
+  width: 100%;
+}
+
+.tree-legend {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.tree-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.48rem 0.58rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.legend-box {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+
+.legend-box.internal { border-color: var(--blue); background: var(--blue-soft); }
+.legend-box.leaf-up { border-color: var(--green); background: var(--green-soft); }
+.legend-box.leaf-dn { border-color: var(--red); background: var(--red-soft); }
+
+.feat-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(120px, 1fr) 48px;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.66rem;
+}
+
+.feat-label {
+  color: rgba(245,245,247,0.86);
+  font-size: 0.78rem;
+  font-weight: 680;
+  text-align: right;
+}
+
+.feat-bar-bg {
+  height: 22px;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.055);
+}
+
+.feat-bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 6px;
+  transition: width 0.55s cubic-bezier(.2,.8,.2,1);
+}
+
+.feat-pct {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.backtest-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--border);
+}
+
+.bt-card {
+  min-height: 92px;
+  padding: 0.9rem;
+  background: rgba(15,16,20,0.9);
+}
+
+.bt-val {
+  color: var(--text);
+  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-weight: 780;
+  line-height: 1.1;
+}
+
+.bt-lbl {
+  margin-top: 0.38rem;
+  color: var(--muted-2);
+  font-size: 0.66rem;
+  font-weight: 760;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.bt-table-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(9,10,13,0.82);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.68rem 0.74rem;
+  color: var(--muted);
+  background: rgba(21,22,27,0.96);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.66rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+td {
+  padding: 0.62rem 0.74rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  color: rgba(245,245,247,0.82);
+}
+
+tr.correct td { background: rgba(48,209,88,0.045); }
+tr.wrong td { background: rgba(255,69,58,0.045); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 0.45rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.pill-up { color: #c4f8cf; background: var(--green-soft); border: 1px solid rgba(48,209,88,0.22); }
+.pill-down { color: #ffd1cf; background: var(--red-soft); border: 1px solid rgba(255,69,58,0.22); }
+.pill-ok { color: #c4f8cf; background: var(--green-soft); }
+.pill-wrong { color: #ffd1cf; background: var(--red-soft); }
+
+#tip {
+  position: fixed;
+  display: none;
+  z-index: 500;
+  max-width: 260px;
+  padding: 0.68rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: rgba(245,245,247,0.88);
+  background: rgba(22,23,27,0.94);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--shadow-soft);
+  pointer-events: none;
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+
+#loading {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5,5,6,0.74);
+  backdrop-filter: blur(26px) saturate(135%);
+}
+
+#loading.show { display: flex; }
+
+.loading-card {
+  width: min(420px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035)),
+    rgba(20,21,25,0.92);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.ld-row {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.ld-ring {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.ld-title {
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+.ld-sub {
+  margin-top: 0.28rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.skeleton {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.skeleton span {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+  background-size: 220% 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
+.skeleton span:nth-child(2) { width: 72%; }
+.skeleton span:nth-child(3) { width: 46%; }
+
+@keyframes shimmer {
+  to { background-position: -220% 0; }
+}
+
+@media (max-width: 1180px) {
+  .control-shell,
+  #empty-state,
+  #app {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    justify-content: stretch;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  #pred-card { position: static; }
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-badges {
+    justify-content: flex-start;
+  }
+
+  #stats-bar,
+  .backtest-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-cell:nth-child(1) { grid-row: span 1; }
+}
+
+@media (max-width: 620px) {
+  html { font-size: 14px; }
+
+  main {
+    padding: 0.85rem;
+  }
+
+  .controls,
+  .indicators-grid,
+  .feat-row {
+    grid-template-columns: 1fr;
+  }
+
+  #train-btn {
+    width: 100%;
+  }
+
+  .feat-label {
+    text-align: left;
+  }
+
+  #stats-bar,
+  .backtest-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-copy,
+  .preview-panel {
+    min-height: 320px;
+  }
+
+  .bt-table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 620px;
+  }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div id="loading" aria-live="polite" aria-busy="true">
+  <div class="loading-card">
+    <div class="ld-row">
+      <div class="ld-ring"></div>
+      <div>
+        <div class="ld-title">Training market model</div>
+        <div class="ld-sub">Fetching prices, tuning the tree, and running walk-forward checks.</div>
+      </div>
+    </div>
+    <div class="skeleton" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-icon" aria-hidden="true"><span>SS</span></div>
+    <div>
+      <h1>StockSense AI</h1>
+      <p>Decision tree market console</p>
+    </div>
+  </div>
+  <div class="header-badges" aria-label="Model details">
+    <span class="chip chip-blue">Entropy tree</span>
+    <span class="chip chip-green">Walk-forward tested</span>
+    <span class="chip">9 indicators</span>
+  </div>
+</header>
+
+<main id="content">
+  <section class="control-shell" aria-labelledby="console-title">
+    <div class="control-copy">
+      <span class="eyebrow">Live direction model</span>
+      <h2 id="console-title">Market signal console</h2>
+      <p>Choose a ticker and generate a fresh next-session direction call from the latest available close.</p>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="ticker-select">Ticker</label>
+        <select id="ticker-select">
+          {% for ticker, name in stocks.items() %}
+          <option value="{{ ticker }}">{{ ticker }} - {{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button id="train-btn">
+        <div class="spinner" id="btn-spinner"></div>
+        <span id="btn-text">Analyze</span>
+      </button>
+    </div>
+    <div class="notice" id="notice" role="alert"></div>
+  </section>
+
+  <section id="stats-bar" aria-label="Model summary">
+    <div class="stat">
+      <span class="stat-label">Company</span>
+      <span class="stat-value c-cyan" id="s-company">-</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Last close</span>
+      <span class="stat-value" id="s-close">-</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Training rows</span>
+      <span class="stat-value" id="s-ntrain">-</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Train accuracy</span>
+      <span class="stat-value c-green" id="s-tacc">-</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Holdout accuracy</span>
+      <span class="stat-value c-amber" id="s-teacc">-</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Walk-forward</span>
+      <span class="stat-value c-purple" id="s-wr">-</span>
+    </div>
+  </section>
+
+  <section id="empty-state" aria-label="StockSense overview">
+    <div class="empty-copy">
+      <span class="eyebrow">StockSense</span>
+      <h2>Signals before the open</h2>
+      <p>A compact model view for comparing the call, confidence, indicator pressure, and the tree path behind the decision.</p>
+    </div>
+    <div class="preview-panel" aria-hidden="true">
+      <div class="preview-top">
+        <span>Preview</span>
+        <span class="chip chip-blue">Ready</span>
+      </div>
+      <div class="preview-grid">
+        <div class="preview-cell">
+          <div class="preview-label">Direction</div>
+          <div class="preview-number c-green">UP</div>
+          <svg class="sparkline" viewBox="0 0 420 180" preserveAspectRatio="none">
+            <path d="M0 130 C48 122 72 72 126 92 S206 142 260 88 340 54 420 34" fill="none" stroke="rgba(48,209,88,0.68)" stroke-width="4"/>
+            <path d="M0 180 L0 130 C48 122 72 72 126 92 S206 142 260 88 340 54 420 34 L420 180 Z" fill="rgba(48,209,88,0.08)"/>
+          </svg>
+        </div>
+        <div class="preview-cell">
+          <div class="preview-label">Confidence</div>
+          <div class="preview-number">72.4</div>
+          <div class="bars">
+            <span style="height:42%"></span>
+            <span style="height:64%"></span>
+            <span style="height:51%"></span>
+            <span style="height:82%"></span>
+            <span style="height:58%"></span>
+            <span style="height:72%"></span>
+            <span style="height:44%"></span>
+            <span style="height:68%"></span>
+            <span style="height:56%"></span>
+          </div>
+        </div>
+        <div class="preview-cell">
+          <div class="preview-label">Holdout</div>
+          <div class="preview-number c-amber">61.8</div>
+          <div class="bars">
+            <span style="height:62%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:38%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:78%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:48%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:69%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:55%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:44%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:74%;background:rgba(255,214,10,0.5)"></span>
+            <span style="height:52%;background:rgba(255,214,10,0.5)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="app" aria-label="Prediction results">
+    <div id="left-col">
+      <article class="card" id="pred-card">
+        <div class="card-hdr">
+          <h3>Next session</h3>
+          <span id="pred-ticker-badge" class="ticker-badge"></span>
+        </div>
+
+        <div class="pred-verdict">
+          <div class="pred-arrow" id="pred-arrow">-</div>
+          <div class="pred-dir" id="pred-dir">-</div>
+          <div class="pred-sub" id="pred-conf">Confidence: -%</div>
+          <div class="pred-sub" id="pred-date"></div>
+        </div>
+
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-row">
+            <span>Model confidence</span>
+            <span id="conf-pct">-</span>
+          </div>
+          <div class="conf-bar-bg">
+            <div class="conf-bar-fill" id="conf-bar" style="width:0%;background:var(--green)"></div>
+          </div>
+        </div>
+
+        <div class="indicators-grid" id="indicators-grid"></div>
+
+        <div class="path-section">
+          <div class="path-title">Decision path</div>
+          <div class="path-steps" id="path-steps"></div>
+        </div>
+      </article>
+    </div>
+
+    <div id="right-col">
+      <article class="card tab-card">
+        <div class="tab-bar" role="tablist" aria-label="Result views">
+          <div class="tab-btn active" data-tab="tree" role="tab">Decision Tree</div>
+          <div class="tab-btn" data-tab="features" role="tab">Feature Importance</div>
+          <div class="tab-btn" data-tab="backtest" role="tab">Backtest</div>
+        </div>
+
+        <div class="tab-pane active" id="tab-tree">
+          <div class="info-box">
+            Blue nodes are indicator splits. Green and red leaves are the final UP or DOWN calls. Hover a node for counts and information gain.
+          </div>
+          <div class="tree-legend">
+            <div class="tree-legend-item">
+              <div class="legend-box internal"></div>
+              <span>Split node</span>
+            </div>
+            <div class="tree-legend-item">
+              <div class="legend-box leaf-up"></div>
+              <span>UP leaf</span>
+            </div>
+            <div class="tree-legend-item">
+              <div class="legend-box leaf-dn"></div>
+              <span>DOWN leaf</span>
+            </div>
+          </div>
+          <div id="tree-svg-wrap">
+            <svg id="tree-svg"></svg>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-features">
+          <div class="info-box">
+            Importance is calculated from weighted information gain across the final tree.
+          </div>
+          <div id="feat-bars" style="padding: 0.35rem 0;"></div>
+        </div>
+
+        <div class="tab-pane" id="tab-backtest">
+          <div class="info-box">
+            Each recent row is predicted by a tree trained only on prior rows.
+          </div>
+          <div class="backtest-summary" id="bt-summary"></div>
+          <div class="bt-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Predicted</th><th>Actual</th><th>Result</th><th>Confidence</th></tr>
+              </thead>
+              <tbody id="bt-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'tree' && window._treeData) renderTree(window._treeData);
+  });
+});
+
+const trainBtn = document.getElementById('train-btn');
+const spinner = document.getElementById('btn-spinner');
+const btnText = document.getElementById('btn-text');
+const notice = document.getElementById('notice');
+
+function showNotice(message) {
+  notice.textContent = message;
+  notice.classList.add('show');
+}
+
+function clearNotice() {
+  notice.textContent = '';
+  notice.classList.remove('show');
+}
+
+trainBtn.addEventListener('click', async () => {
+  const ticker = document.getElementById('ticker-select').value;
+  clearNotice();
+
+  trainBtn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Analyzing';
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('stats-bar').classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/train', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showNotice(err.error || 'The model request failed. Please try again.');
+      document.getElementById('empty-state').style.display = 'grid';
+      return;
+    }
+
+    const d = await res.json();
+    window._treeData = d.tree;
+    window._currencySymbol = d.currency_symbol || '$';
+
+    renderStatsBar(d);
+    renderPrediction(d);
+    renderFeatureBars(d.feature_importance);
+    renderBacktest(d.backtest, d.pnl_final, window._currencySymbol);
+
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('stats-bar').classList.add('visible');
+
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="tree"]').classList.add('active');
+    document.getElementById('tab-tree').classList.add('active');
+
+    requestAnimationFrame(() => renderTree(d.tree));
+  } catch (e) {
+    showNotice('Connection failed. ' + e.message);
+    document.getElementById('empty-state').style.display = 'grid';
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+    trainBtn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = 'Analyze';
+  }
+});
+
+function renderStatsBar(d) {
+  const symbol = d.currency_symbol || '$';
+  document.getElementById('s-company').textContent = d.company;
+  document.getElementById('s-close').textContent = symbol + Number(d.latest_close).toFixed(2);
+  document.getElementById('s-ntrain').textContent = d.n_train;
+  document.getElementById('s-tacc').textContent = d.train_acc + '%';
+  document.getElementById('s-teacc').textContent = d.test_acc + '%';
+  document.getElementById('s-wr').textContent = d.win_rate + '%';
+}
+
+function renderPrediction(d) {
+  const up = d.prediction === 1;
+  const card = document.getElementById('pred-card');
+  card.className = 'card ' + (up ? 'up' : 'down');
+
+  document.getElementById('pred-arrow').textContent = up ? '▲' : '▼';
+  const dirEl = document.getElementById('pred-dir');
+  dirEl.textContent = up ? 'UP' : 'DOWN';
+  dirEl.className = 'pred-dir ' + (up ? 'up' : 'down');
+  document.getElementById('pred-conf').textContent = 'Confidence: ' + d.confidence + '%';
+  document.getElementById('pred-date').textContent = 'Latest close: ' + d.latest_date;
+  document.getElementById('pred-ticker-badge').textContent = d.ticker;
+  document.getElementById('conf-pct').textContent = d.confidence + '%';
+
+  const bar = document.getElementById('conf-bar');
+  bar.style.width = d.confidence + '%';
+  bar.style.background = up ? 'var(--green)' : 'var(--red)';
+
+  const shortNames = {
+    'RSI (14)': 'RSI (14)',
+    'SMA10/SMA50 Ratio': 'SMA Cross',
+    'MACD Histogram': 'MACD Hist',
+    'Bollinger %B': 'Bollinger %B',
+    'Volume Change %': 'Volume',
+    'Price Change 1d %': '1d Change',
+    'Price Change 3d %': '3d Change',
+    'Price Change 5d %': '5d Change',
+    'Volatility 10d': 'Volatility',
+  };
+
+  const grid = document.getElementById('indicators-grid');
+  grid.innerHTML = '';
+  for (const [feat, val] of Object.entries(d.current_indicators)) {
+    const numericVal = Number(val);
+    const name = shortNames[feat] || feat;
+    const color = numericVal > 0 ? 'var(--green)' : (numericVal < 0 ? 'var(--red)' : 'var(--text)');
+    const el = document.createElement('div');
+    el.className = 'ind-item';
+    el.innerHTML = `<div class="ind-name">${name}</div>
+                    <div class="ind-val" style="color:${color}">${numericVal.toFixed(3)}</div>`;
+    grid.appendChild(el);
+  }
+
+  const stepsEl = document.getElementById('path-steps');
+  stepsEl.innerHTML = '';
+  d.decision_path.forEach((step, i) => {
+    const el = document.createElement('div');
+    el.className = 'path-step';
+    el.innerHTML = `
+      <div class="path-num">${i + 1}</div>
+      <div class="path-content">
+        <div>
+          <span class="path-feat">${step.feature}</span>
+          &nbsp;=&nbsp;
+          <span class="path-val">${step.value}</span>
+        </div>
+        <div class="path-meta">${step.direction} &rarr; ${step.went_left ? 'left branch' : 'right branch'}</div>
+      </div>`;
+    stepsEl.appendChild(el);
+  });
+
+  const leafEl = document.createElement('div');
+  leafEl.className = 'path-leaf';
+  leafEl.style.background = up ? 'var(--green-soft)' : 'var(--red-soft)';
+  leafEl.style.border = '1px solid ' + (up ? 'rgba(48,209,88,0.28)' : 'rgba(255,69,58,0.28)');
+  leafEl.style.color = up ? 'var(--green)' : 'var(--red)';
+  leafEl.textContent = `Leaf predicts ${up ? 'UP' : 'DOWN'} with ${d.confidence}% confidence`;
+  stepsEl.appendChild(leafEl);
+}
+
+const barColors = ['#0a84ff', '#64d2ff', '#30d158', '#ffd60a', '#bf5af2', '#ff9f0a', '#5e5ce6', '#ff453a', '#8e8e93'];
+
+function renderFeatureBars(fi) {
+  const container = document.getElementById('feat-bars');
+  container.innerHTML = '';
+  Object.entries(fi).forEach(([name, pct], i) => {
+    const row = document.createElement('div');
+    row.className = 'feat-row';
+    row.innerHTML = `
+      <div class="feat-label">${name}</div>
+      <div class="feat-bar-bg">
+        <div class="feat-bar-fill" style="width:${pct}%;background:${barColors[i % barColors.length]}"></div>
+      </div>
+      <div class="feat-pct">${pct}%</div>`;
+    container.appendChild(row);
+  });
+}
+
+function renderBacktest(results, pnlFinal, symbol) {
+  const count = results.length || 1;
+  const wins = results.filter(r => r.correct).length;
+  const upRight = results.filter(r => r.predicted === 1 && r.actual === 1).length;
+  const upTotal = results.filter(r => r.predicted === 1).length;
+  const wr = (wins / count * 100).toFixed(1);
+  const pnl = pnlFinal || 0;
+
+  document.getElementById('bt-summary').innerHTML = `
+    <div class="bt-card"><div class="bt-val c-green">${wr}%</div><div class="bt-lbl">Win rate</div></div>
+    <div class="bt-card"><div class="bt-val">${wins}/${results.length}</div><div class="bt-lbl">Correct calls</div></div>
+    <div class="bt-card"><div class="bt-val c-cyan">${upRight}/${upTotal}</div><div class="bt-lbl">UP calls right</div></div>
+    <div class="bt-card">
+      <div class="bt-val ${pnl >= 0 ? 'c-green' : 'c-red'}">
+        ${pnl >= 0 ? '+' : '-'}${symbol}${Math.abs(pnl).toLocaleString()}
+      </div>
+      <div class="bt-lbl">Directional P&amp;L</div>
+    </div>`;
+
+  const tbody = document.getElementById('bt-tbody');
+  tbody.innerHTML = '';
+  [...results].reverse().forEach(r => {
+    const tr = document.createElement('tr');
+    tr.className = r.correct ? 'correct' : 'wrong';
+    tr.innerHTML = `
+      <td>${r.date}</td>
+      <td><span class="pill ${r.predicted === 1 ? 'pill-up' : 'pill-down'}">${r.predicted === 1 ? '▲ UP' : '▼ DOWN'}</span></td>
+      <td><span class="pill ${r.actual === 1 ? 'pill-up' : 'pill-down'}">${r.actual === 1 ? '▲ UP' : '▼ DOWN'}</span></td>
+      <td><span class="pill ${r.correct ? 'pill-ok' : 'pill-wrong'}">${r.correct ? 'Correct' : 'Wrong'}</span></td>
+      <td>${r.confidence}%</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderTree(treeData) {
+  const wrap = document.getElementById('tree-svg-wrap');
+  const svg = document.getElementById('tree-svg');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const NW = 166, NH = 68, LW = 118, LH = 54, RX = 8;
+  const H_GAP = 190, V_GAP = 108;
+  const PAD = 44;
+  const tip = document.getElementById('tip');
+
+  function svgEl(tag, attrs = {}) {
+    const el = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+    return el;
+  }
+
+  function appendText(parent, text, attrs = {}) {
+    const el = svgEl('text', attrs);
+    el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+
+  let nextLeaf = 0;
+  let maxDepth = 0;
+
+  function buildLayout(node, depth = 0, edge = '') {
+    const children = [];
+    if (!node.is_leaf) {
+      if (node.left) children.push(buildLayout(node.left, depth + 1, '\u2264 ' + node.threshold));
+      if (node.right) children.push(buildLayout(node.right, depth + 1, '> ' + node.threshold));
+    }
+
+    const item = { data: node, children, depth, edge, x: 0, y: 0 };
+    maxDepth = Math.max(maxDepth, depth);
+
+    if (children.length) {
+      item.x = (children[0].x + children[children.length - 1].x) / 2;
+    } else {
+      item.x = nextLeaf;
+      nextLeaf += 1;
+    }
+
+    return item;
+  }
+
+  const root = buildLayout(treeData);
+  const leaves = Math.max(1, nextLeaf);
+  const treeW = Math.max(0, (leaves - 1) * H_GAP);
+  const svgW = treeW + NW + PAD * 2;
+  const svgH = maxDepth * V_GAP + NH + PAD * 2;
+  const containerW = wrap.clientWidth || 900;
+  const scale = Math.min(1, containerW / svgW);
+  const dispH = Math.max(460, svgH * scale);
+
+  svg.setAttribute('width', containerW);
+  svg.setAttribute('height', dispH);
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
+
+  const linkLayer = svgEl('g');
+  const labelLayer = svgEl('g');
+  const nodeLayer = svgEl('g');
+  svg.append(linkLayer, labelLayer, nodeLayer);
+
+  const nodes = [];
+  const links = [];
+
+  function assignCoords(item) {
+    item.cx = PAD + NW / 2 + item.x * H_GAP;
+    item.cy = PAD + NH / 2 + item.depth * V_GAP;
+    nodes.push(item);
+    item.children.forEach(child => {
+      assignCoords(child);
+      links.push({ source: item, target: child, edge: child.edge });
+    });
+  }
+
+  assignCoords(root);
+
+  links.forEach(link => {
+    const sourceLeaf = link.source.data.is_leaf;
+    const targetLeaf = link.target.data.is_leaf;
+    const sourceH = sourceLeaf ? LH : NH;
+    const targetH = targetLeaf ? LH : NH;
+    const sx = link.source.cx;
+    const sy = link.source.cy + sourceH / 2;
+    const tx = link.target.cx;
+    const ty = link.target.cy - targetH / 2;
+    const midY = (sy + ty) / 2;
+    const path = `M ${sx} ${sy} C ${sx} ${midY}, ${tx} ${midY}, ${tx} ${ty}`;
+
+    linkLayer.appendChild(svgEl('path', {
+      d: path,
+      fill: 'none',
+      stroke: 'rgba(255,255,255,0.18)',
+      'stroke-width': 1.4,
+    }));
+
+    appendText(labelLayer, link.edge, {
+      x: (sx + tx) / 2,
+      y: midY - 7,
+      'text-anchor': 'middle',
+      'font-size': '10',
+      'font-weight': '700',
+      fill: 'rgba(245,245,247,0.48)',
+    });
+  });
+
+  nodes.forEach(node => {
+    const d = node.data;
+    const isLf = d.is_leaf;
+    const w = isLf ? LW : NW;
+    const h = isLf ? LH : NH;
+
+    const strokeColor = isLf ? (d.prediction === 1 ? '#30d158' : '#ff453a') : '#0a84ff';
+    const fillColor = isLf ? (d.prediction === 1 ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)') : 'rgba(10,132,255,0.12)';
+    const textColor = isLf ? strokeColor : '#b7dcff';
+
+    const ng = svgEl('g', {
+      transform: `translate(${node.cx - w / 2},${node.cy - h / 2})`,
+    });
+    nodeLayer.appendChild(ng);
+
+    ng.appendChild(svgEl('rect', {
+      width: w,
+      height: h,
+      rx: RX,
+      fill: fillColor,
+      stroke: strokeColor,
+      'stroke-width': 1.6,
+    }));
+
+    if (!isLf) {
+      const feat = d.feature || '';
+      appendText(ng, feat.length > 21 ? feat.substring(0, 21) + '...' : feat, {
+        x: w / 2,
+        y: 20,
+        'text-anchor': 'middle',
+        'font-size': '10',
+        'font-weight': '760',
+        fill: textColor,
+      });
+
+      ng.appendChild(svgEl('line', {
+        x1: 12,
+        x2: w - 12,
+        y1: 30,
+        y2: 30,
+        stroke: 'rgba(255,255,255,0.13)',
+        'stroke-width': 1,
+      }));
+
+      appendText(ng, 'threshold: ' + d.threshold, {
+        x: w / 2,
+        y: 45,
+        'text-anchor': 'middle',
+        'font-size': '10',
+        fill: '#ffd60a',
+      });
+
+      appendText(ng, d.samples + ' samples · IG ' + d.info_gain, {
+        x: w / 2,
+        y: 59,
+        'text-anchor': 'middle',
+        'font-size': '9',
+        fill: 'rgba(245,245,247,0.52)',
+      });
+    } else {
+      const label = d.prediction === 1 ? '▲  UP' : '▼  DOWN';
+
+      appendText(ng, label, {
+        x: w / 2,
+        y: 23,
+        'text-anchor': 'middle',
+        'font-size': '13',
+        'font-weight': '800',
+        fill: textColor,
+      });
+
+      appendText(ng, d.samples + ' samples · ' + d.probability + '%', {
+        x: w / 2,
+        y: 40,
+        'text-anchor': 'middle',
+        'font-size': '9',
+        fill: 'rgba(245,245,247,0.56)',
+      });
+    }
+
+    const hitbox = svgEl('rect', {
+      width: w,
+      height: h,
+      rx: RX,
+      fill: 'transparent',
+      stroke: 'none',
+    });
+    hitbox.style.cursor = 'pointer';
+    hitbox.addEventListener('mouseover', e => {
+      const cc = Object.entries(d.class_counts || {})
+        .map(([k, v]) => `${k == 1 ? 'UP' : 'DOWN'}: ${v}`)
+        .join(' | ');
+      tip.innerHTML = isLf
+        ? `<strong>Leaf node</strong><br>Prediction: <strong>${d.prediction === 1 ? 'UP' : 'DOWN'}</strong><br>Confidence: ${d.probability}%<br>Samples: ${d.samples}<br>${cc}`
+        : `<strong>${d.feature}</strong><br>Split: &le; ${d.threshold}<br>Info gain: ${d.info_gain}<br>Samples: ${d.samples}<br>${cc}`;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top = (e.clientY - 12) + 'px';
+    });
+    hitbox.addEventListener('mousemove', e => {
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top = (e.clientY - 12) + 'px';
+    });
+    hitbox.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    ng.appendChild(hitbox);
+  });
+}
+</script>
+</body>
+</html>
